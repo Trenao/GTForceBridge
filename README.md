@@ -1,7 +1,13 @@
-# gtforce_bridge — Ponte em Python para Forza Horizon 4
+# gtforce_bridge — Ponte em Python para Logitech GT Force
 
-Usa o **Logitech GT Force (LPRC-10000)** no **Forza Horizon 4 (Microsoft Store)** com ajustes feitos no
+Ponte universal para o **Logitech GT Force (LPRC-10000)** em qualquer jogo, com ajustes feitos no
 programa (calibração, zona morta, curvas) e **force feedback (FFB) preservado**.
+
+Independente de jogo: o volante é lido, processado e exposto ao sistema como um dispositivo
+virtual, então qualquer título que aceite controle funciona sem configuração específica.
+
+**Testado em:** Assetto Corsa Rally, Wreckfest 2, Forza Horizon 4 (Microsoft Store).
+Outros jogos com suporte a controle devem funcionar da mesma forma.
 
 O volante é lido via SDL2/DirectInput, processado e publicado num **vJoy**; os efeitos de FFB que o jogo
 manda ao vJoy são traduzidos e tocados no volante (SDL haptic).
