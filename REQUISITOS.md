@@ -78,13 +78,13 @@ Só necessário se for usar a saída de **controle Xbox 360 virtual**.
 
 ## Instalar tudo de uma vez (rodando do código)
 
-Se você usa o projeto pelo código-fonte, o `PREPARAR_GTForceBridge.bat` faz isso:
+Se você usa o projeto pelo código-fonte, o `1-PREPARAR_GTForceBridge.bat` faz isso:
 
 ```cmd
-PREPARAR_GTForceBridge.bat
+1-PREPARAR_GTForceBridge.bat
 ```
 
-Ele cria o ambiente Python, detecta se **HidHide** e **vJoy** estão instalados e **oferece instalar** (pergunta S/N, com pedido de administrador). Para pular essa parte: `PREPARAR_GTForceBridge.bat --sem-drivers`.
+Ele cria o ambiente Python, detecta se **HidHide** e **vJoy** estão instalados e **oferece instalar** (pergunta S/N, com pedido de administrador). Para pular essa parte: `1-PREPARAR_GTForceBridge.bat --sem-drivers`.
 
 ---
 

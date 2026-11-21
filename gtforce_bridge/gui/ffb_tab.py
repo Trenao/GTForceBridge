@@ -69,7 +69,7 @@ class FfbTabMixin:
             ("direction_mode", "Direção dos efeitos no volante", ("steering", "cartesian"),
              "steering = eixo de direção do SDL (padrão); cartesian = vetor (1,0)."),
             ("polar_zero", "Zero da direção polar do jogo", ("east", "north"),
-             "east = ângulo a partir de +X (até a v0.6); north = convenção DirectInput. Veja o --ffb-dump.")]:
+             "north = convenção DirectInput (padrão; 90° = +X, 270° = −X); east = a partir de +X (perde o lado em 90°/270°).")]:
             row = ttk.Frame(adv, style="Card.TFrame"); row.pack(fill="x", pady=3)
             ttk.Label(row, text=label, background="#141d2b", width=32).pack(side="left")
             v = tk.StringVar(value=str(ffb.get(key, options[0])))

@@ -43,12 +43,19 @@ class DashboardMixin:
         self.dial = SteeringDial(c); self.dial.pack(fill="both", expand=True)
         c = self.dash_card("PEDAIS", "saída vJoy")
         self.pedal_bars = PedalBars(c); self.pedal_bars.pack(fill="both", expand=True)
-        c = self.dash_card("FORCE FEEDBACK", "do jogo → volante")
+        c = self.dash_card("FORCE FEEDBACK", "do jogo para o volante")
         self.force_meter = ForceMeter(c); self.force_meter.pack(fill="x")
         self.ffb_fx_var = self.tk.StringVar(value="Efeitos: —")
+        self.ffb_raw_var = self.tk.StringVar(value="")
+        self.ffb_dirs_var = self.tk.StringVar(value="")
         self.ffb_cap_var = self.tk.StringVar(value="Inicie a ponte para ler as capacidades do volante.")
         ttk.Label(c, textvariable=self.ffb_fx_var, background=T.CARD, foreground=T.ACCENT_HI,
                   font=(T.FONT, 9, "bold"), wraplength=260, justify="left").pack(anchor="w", pady=(4, 2))
+        ttk.Label(c, textvariable=self.ffb_raw_var, background=T.CARD, foreground=T.TEXT, font=(T.FONT, 9),
+                  wraplength=260, justify="left").pack(anchor="w", pady=(0, 2))
+        self.ffb_dirs_lbl = ttk.Label(c, textvariable=self.ffb_dirs_var, background=T.CARD, foreground=T.MUTED,
+                                      font=(T.FONT, 9), wraplength=260, justify="left")
+        self.ffb_dirs_lbl.pack(anchor="w", pady=(0, 2))
         self.ffb_cap_lbl = ttk.Label(c, textvariable=self.ffb_cap_var, background=T.CARD, foreground=T.MUTED,
                                      font=(T.FONT, 9), wraplength=260, justify="left")
         self.ffb_cap_lbl.pack(anchor="w")
@@ -61,7 +68,7 @@ class DashboardMixin:
 
     def _wrap_ffb(self, width):
         wrap = max(width - 40, 120)
-        self.ffb_cap_lbl.configure(wraplength=wrap)
+        self.ffb_cap_lbl.configure(wraplength=wrap); self.ffb_dirs_lbl.configure(wraplength=wrap)
 
     def _ffb_idle_text(self):
         return "Habilitado" if self.cfg.get("ffb", {}).get("enabled", True) else "Desativado"
@@ -115,7 +122,23 @@ class DashboardMixin:
         self.pedal_bars.set(t, b)
         ffb = d.get("ffb")
         c = ffb.get("const") if ffb else None
-        self.force_meter.set(c)
+        raw = ffb.get("game") if ffb else None
+        self.force_meter.set(c, raw)
+        if ffb and raw is not None and c is not None:
+            sg = ffb.get("sign")
+            self.ffb_raw_var.set(f"Jogo (bruto) {raw * 100:+.0f}%  ·  enviado {c * 100:+.0f}%"
+                                 + (f"  •  direção {ffb['dir']} (sinal {'+' if sg and sg > 0 else '−'})" if ffb.get("dir") else "")
+                                 + f"  •  inversão {'LIGADA' if ffb.get('inv') else 'desligada'}")
+            dirs = ffb.get("dirs") or []
+            txt = ("Direções vistas: " + " · ".join(f"{a}°×{n}" for a, n in dirs)) if dirs else ""
+            if ffb.get("amb") and ffb.get("zero") == "east":
+                txt += ("\nAtenção: direção ambígua com 'zero=leste': o sinal fica fixo em +. Use 'north' em "
+                        "Force Feedback › Zero da direção polar.")
+            elif ffb.get("amb"):
+                txt += "\nDireção perto do eixo norte/sul: o lado vem só do sinal da magnitude do jogo."
+            self.ffb_dirs_var.set(txt.strip())
+        else:
+            self.ffb_raw_var.set(""); self.ffb_dirs_var.set("")
         if ffb is None:
             self.ffb_card.set("Desligado")
             self.ffb_fx_var.set("Efeitos: —")
@@ -131,7 +154,7 @@ class DashboardMixin:
                 txt += f" • {caps['num_effects']} efeitos em memória"
             self.ffb_cap_var.set(txt)
         if s is not None:
-            self.scope.push(float(s) * 100, float(c or 0.0) * 100)
+            self.scope.push(float(s) * 100, float(c or 0.0) * 100, float(raw if raw is not None else (c or 0.0)) * 100)
 
     def dashboard_idle(self):
         if self._dash_idle:
@@ -139,5 +162,5 @@ class DashboardMixin:
         self._dash_idle = True
         self.dial.set(None); self.pedal_bars.set(None, None); self.force_meter.set(None)
         self.scope.clear()
-        self.ffb_fx_var.set("Efeitos: —")
+        self.ffb_fx_var.set("Efeitos: —"); self.ffb_raw_var.set(""); self.ffb_dirs_var.set("")
         self.ffb_card.set(self._ffb_idle_text())

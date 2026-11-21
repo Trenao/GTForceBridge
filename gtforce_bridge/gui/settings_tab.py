@@ -17,7 +17,7 @@ class SettingsMixin:
         }
         ttk.Checkbutton(box, text="Minimizar para a bandeja", variable=self.app_vars["minimize_to_tray"],
                         command=self.save_app_options).pack(anchor="w", pady=3)
-        ttk.Checkbutton(box, text="Botão fechar (X) envia para a bandeja  (para sair de verdade: ícone da bandeja → Sair)",
+        ttk.Checkbutton(box, text="Botão fechar (X) envia para a bandeja  (para sair de verdade: menu do ícone da bandeja, Sair)",
                         variable=self.app_vars["close_to_tray"], command=self.save_app_options).pack(anchor="w", pady=3)
         row = ttk.Frame(box, style="Card.TFrame"); row.pack(fill="x", pady=(8, 0))
         ttk.Button(row, text="Ocultar na bandeja agora", command=self.hide_to_tray).pack(side="left")

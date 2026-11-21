@@ -17,3 +17,12 @@ TELEMETRY_PATH = os.path.join(BASE_DIR, "telemetry.json")
 STOP_PATH = os.path.join(BASE_DIR, "bridge.stop")
 PROFILES_DIR = os.path.join(BASE_DIR, "profiles")
 AUTOCAL_REPORT_PATH = os.path.join(BASE_DIR, "ffb_autocal_report.json")
+
+
+def resource_path(name):
+    """Arquivo empacotado junto do programa (ex.: GTFB.ico): _MEIPASS no exe (PyInstaller), raiz do projeto no código-fonte."""
+    base = getattr(sys, "_MEIPASS", None) if getattr(sys, "frozen", False) else None
+    return os.path.join(base or BASE_DIR, name)
+
+
+ICON_PATH = resource_path("GTFB.ico")

@@ -47,21 +47,21 @@ class FfbTab(unittest.TestCase):
 
     def test_builds_and_reads_defaults(self):
         h = self.host()
-        self.assertEqual(h.ffb_choice["polar_zero"].get(), "east")
+        self.assertEqual(h.ffb_choice["polar_zero"].get(), "north")
         self.assertTrue(h.ffb_flags["honor_duration"].get())
 
     def test_save_writes_every_option_and_clamps(self):
         h = self.host()
         h.ffb_num["update_hz"][0].set("5000")           # acima do máximo
         h.ffb_num["slew_per_sec"][0].set("2,5")         # vírgula decimal
-        h.ffb_choice["polar_zero"].set("north")
+        h.ffb_choice["polar_zero"].set("east")
         h.ffb_flags["honor_duration"].set(False)
         h.ffb_invert.set(True)
         h.save_ffb()
         f = h.cfg["ffb"]
         self.assertEqual(f["update_hz"], 1000)
         self.assertEqual(f["slew_per_sec"], 2.5)
-        self.assertEqual(f["polar_zero"], "north")
+        self.assertEqual(f["polar_zero"], "east")
         self.assertFalse(f["honor_duration"])
         self.assertTrue(f["invert"])
         self.assertEqual(h.saved, 1)

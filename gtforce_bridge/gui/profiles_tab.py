@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import os
 
-from ..config import DEFAULT_CONFIG, _sanitize_ffb, deep_merge
+from ..config import DEFAULT_CONFIG, _sanitize_ffb, deep_merge, merge_user_config
 from ..paths import PROFILES_DIR
 
 
@@ -55,7 +55,7 @@ class ProfilesTabMixin:
         name=self.profile_var.get()
         try:
             path,_=self.profile_path(name)
-            with open(path,encoding="utf-8") as f:self.cfg=deep_merge(DEFAULT_CONFIG,json.load(f))
+            with open(path,encoding="utf-8") as f:self.cfg=merge_user_config(json.load(f))
             self.cfg = _sanitize_ffb(self.cfg)
             self.save_config(reload_widgets=True); self.write_log(f"Perfil carregado: {name}")
         except Exception as e:self.messagebox.showerror("Perfil",str(e))

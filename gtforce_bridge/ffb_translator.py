@@ -8,7 +8,7 @@ import time
 
 from .constants import SCALE_16BIT, SCALE_8BIT, SCALE_DINPUT, SCALE_HYSTERESIS, SCALE_SAMPLES_MIN
 from .curves import clamp
-from .vjoy_protocol import DURATION_INFINITE, LOOP_INFINITE, CTRL_DEVCONT, CTRL_DEVPAUSE, CTRL_DEVRST, CTRL_DISACT, CTRL_ENACT, CTRL_STOPALL, EFF_SOLO, EFF_START, EFF_STOP, ET_CONST, ET_DMPR, ET_FRCTN, ET_INRT, ET_NAMES, ET_RAMP, ET_SINE, ET_SPRNG, ET_SQR, ET_STDN, ET_STUP, ET_TRI
+from .vjoy_protocol import direction_ambiguous, direction_sign, DURATION_INFINITE, LOOP_INFINITE, CTRL_DEVCONT, CTRL_DEVPAUSE, CTRL_DEVRST, CTRL_DISACT, CTRL_ENACT, CTRL_STOPALL, EFF_SOLO, EFF_START, EFF_STOP, ET_CONST, ET_DMPR, ET_FRCTN, ET_INRT, ET_NAMES, ET_RAMP, ET_SINE, ET_SPRNG, ET_SQR, ET_STDN, ET_STUP, ET_TRI
 
 
 class FfbTranslator:
@@ -29,6 +29,7 @@ class FfbTranslator:
         self.last_report_key = {}
         self.scale = {}
         self.scale_samples = {}
+        self.dir_seen = {}      # ângulo polar (graus, passo de 5) -> nº de EFF_REPORT de força constante; só diagnóstico
         self.dev_gain = 1.0
         # (idx, cat) -> {"id": sdl_id, "subtype": flag_sdl}
         self.sdl_fx = {}
@@ -224,20 +225,19 @@ class FfbTranslator:
                 # direções próximas de 90/270 graus zerariam o FFB. Usamos
                 # apenas o hemisfério X para definir o sinal; perto do eixo Y,
                 # tratamos a direção como indefinida e preservamos magnitude.
-                ang = direction / 255.0 * 2.0 * math.pi
-                # O PID 1.0 não define o zero do ângulo. "east": a partir de +X (cos);
-                # "north": convenção do DirectInput (0° = norte, 90° = leste = +X; sen).
-                component_x = (math.sin(ang) if self.cfg.get("polar_zero") == "north"
-                               else math.cos(ang))
                 s["direction_factor"] = 1.0
-                if abs(component_x) < 0.1:
-                    s["sign"] = 1.0
-                else:
-                    s["sign"] = -1.0 if component_x < 0.0 else 1.0
+                s["sign"] = direction_sign(True, direction, dirx, self.cfg.get("polar_zero"))
+                s["dir"] = f"polar {direction / 255.0 * 360.0:.0f}°"
+                s["amb"] = direction_ambiguous(True, direction, self.cfg.get("polar_zero"))
+                if etype == ET_CONST:
+                    a = int(round(direction / 255.0 * 360.0 / 5.0)) * 5 % 360
+                    self.dir_seen[a] = self.dir_seen.get(a, 0) + 1
             else:
                 s["direction_factor"] = 1.0
                 # Cartesiano (vjoyinterface.h): DirX positivo = direita, negativo = esquerda.
-                s["sign"] = -1.0 if (dirx is not None and dirx < 0) else 1.0
+                s["sign"] = direction_sign(False, direction, dirx)
+                s["dir"] = f"cartesiano X={dirx}"
+                s["amb"] = False
             self.log(f"efeito {idx}: {ET_NAMES.get(etype, etype)} gain={s['gain']:.2f} "
                      f"sign={s['sign']:+.0f} dir_f={s['direction_factor']:+.3f} "
                      f"polar={int(bool(polar))} direction={direction} dirx={dirx} dur={dur} delay={delay}")
@@ -630,17 +630,26 @@ class FfbTranslator:
                         self.sdl2.SDL_HapticRunEffect(self.w.haptic, entry["id"], 1)
 
     def snapshot(self):
-        """Estado resumido para a GUI (via telemetria): força constante enviada e efeitos tocando."""
-        const, active = None, []
+        """Estado resumido para a GUI (via telemetria).
+
+        const: soma (limitada a ±1) da força constante realmente enviada ao volante — o motor soma os efeitos.
+        game:  a mesma soma, mas com a magnitude BRUTA do jogo (antes do sinal da direção, ganhos e calibração).
+        Comparar os dois mostra se o jogo manda os dois lados ou se é a interpretação da direção que fixa um lado."""
+        out_sum, game_sum, sign, dirtxt, amb, active = None, None, None, None, False, []
         for slot, entry in self.sdl_fx.items():
             st = self.fx.get(entry["key"])
             if not st or not st["playing"]:
                 continue
             if entry["cat"] == "const":
-                const = (entry.get("out") if entry.get("out") is not None else entry["eff"].constant.level) / 32767.0
-                const = max(-1.0, min(1.0, const))
+                lvl = entry.get("out") if entry.get("out") is not None else entry["eff"].constant.level
+                out_sum = (out_sum or 0.0) + lvl / 32767.0
+                game_sum = (game_sum or 0.0) + st["const"] / (self._scale_for(entry["key"][0]) or 1.0)
+                sign, dirtxt, amb = int(st.get("sign", 1.0)), st.get("dir"), bool(st.get("amb"))
             active.append(ET_NAMES.get(entry["key"][1], str(entry["key"][1])))
-        return {"const": None if const is None else round(const, 3),
+        clip = lambda v: None if v is None else round(max(-1.0, min(1.0, v)), 3)
+        dirs = sorted(self.dir_seen.items(), key=lambda kv: -kv[1])[:3]
+        return {"const": clip(out_sum), "game": clip(game_sum), "sign": sign, "dir": dirtxt, "amb": amb,
+                "dirs": [[a, n] for a, n in dirs], "inv": bool(self.cfg.get("invert")), "zero": self.cfg.get("polar_zero"),
                 "active": sorted(set(active)), "slots": len(self.sdl_fx)}
 
     def shutdown(self):

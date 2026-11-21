@@ -98,12 +98,15 @@ class ForceMeter(_Instrument):
     def __init__(self, master, **kw):
         super().__init__(master, height=70, **kw)
         self.value = None
+        self.raw = None          # magnitude bruta do jogo (antes do sinal/ganhos), só como referência
 
-    def set(self, v):
+    def set(self, v, raw=None):
         if v is not None:
             v = max(-1.0, min(1.0, float(v)))
-        if v != self.value:
-            self.value = v
+        if raw is not None:
+            raw = max(-1.0, min(1.0, float(raw)))
+        if (v, raw) != (self.value, self.raw):
+            self.value, self.raw = v, raw
             self.redraw()
 
     def redraw(self):
@@ -117,6 +120,9 @@ class ForceMeter(_Instrument):
         v = self.value
         if v:
             self.create_rectangle(mid, y0, mid + v * (x1 - x0) / 2, y1, fill=T.INFO, outline="")
+        if self.raw is not None:                    # triângulo cinza sob a barra = o que o jogo pediu (bruto)
+            rx = mid + self.raw * (x1 - x0) / 2
+            self.create_polygon(rx, y1 + 2, rx - 4, y1 + 9, rx + 4, y1 + 9, fill=T.MUTED, outline="")
         mx = mid + (v or 0) * (x1 - x0) / 2
         self.create_line(mx, y0 - 3, mx, y1 + 3, fill="#ffffff", width=2)
         self.create_text(x0, y1 + 16, text="ESQ", fill=T.MUTED, font=(T.FONT, 8), anchor="w")
@@ -133,10 +139,11 @@ class Scope(_Instrument):
         super().__init__(master, height=170, **kw)
         self.a = deque(maxlen=self.SAMPLES)
         self.b = deque(maxlen=self.SAMPLES)
+        self.c = deque(maxlen=self.SAMPLES)      # magnitude bruta do jogo (referência)
         self._pending = False
 
-    def push(self, a, b):
-        self.a.append(a); self.b.append(b)
+    def push(self, a, b, c=None):
+        self.a.append(a); self.b.append(b); self.c.append(b if c is None else c)
         if not self._pending:                      # no máximo ~20 quadros/s
             self._pending = True
             self.after(50, self._flush)
@@ -147,7 +154,7 @@ class Scope(_Instrument):
 
     def clear(self):
         if self.a or self.b:
-            self.a.clear(); self.b.clear()
+            self.a.clear(); self.b.clear(); self.c.clear()
             self.redraw()
 
     def redraw(self):
@@ -161,7 +168,7 @@ class Scope(_Instrument):
             self.create_line(left, y, right, y, fill=T.TRACK if val == 0 else "#1f2b3d", dash=() if val == 0 else (2, 4))
             self.create_text(left - 6, y, text=f"{val:+d}" if val else "0", fill=T.MUTED, font=(T.FONT, 8), anchor="e")
         dx = (right - left) / (self.SAMPLES - 1)
-        for data, color in ((self.a, T.ACCENT), (self.b, T.INFO)):
+        for data, color, dash in ((self.c, T.MUTED, (3, 3)), (self.a, T.ACCENT, ()), (self.b, T.INFO, ())):
             n = len(data)
             if n < 2:
                 continue
@@ -169,7 +176,8 @@ class Scope(_Instrument):
             for i, v in enumerate(data):
                 v = max(-100.0, min(100.0, v))
                 pts += [right - (n - 1 - i) * dx, top + (100 - v) / 200 * (bot - top)]
-            self.create_line(*pts, fill=color, width=2)
+            self.create_line(*pts, fill=color, width=1 if dash else 2, dash=dash)
         self.create_text(left, h - 10, text="direção", fill=T.ACCENT, font=(T.FONT, 9), anchor="w")
-        self.create_text(left + 70, h - 10, text="força constante", fill=T.INFO, font=(T.FONT, 9), anchor="w")
+        self.create_text(left + 70, h - 10, text="enviado ao volante", fill=T.INFO, font=(T.FONT, 9), anchor="w")
+        self.create_text(left + 190, h - 10, text="- - jogo (bruto)", fill=T.MUTED, font=(T.FONT, 9), anchor="w")
         self.create_text(right, h - 10, text="últimos 8 s", fill=T.MUTED, font=(T.FONT, 9), anchor="e")

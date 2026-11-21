@@ -64,18 +64,18 @@ Hardware medido: GT Force LPRC-10000, que o sistema enxerga como **WingMan Formu
 ### Opção B — a partir do código
 
 ```bat
-PREPARAR_GTForceBridge.bat
-INICIAR_GTForceBridge.bat
+1-PREPARAR_GTForceBridge.bat
+2-INICIAR_GTForceBridge.bat
 ```
 
-O `PREPARAR_GTForceBridge.bat`:
+O `1-PREPARAR_GTForceBridge.bat`:
 
 - procura Python 3.10+ 64 bits com tkinter (e tenta instalar o 3.12 pelo winget se não achar);
 - cria/valida o `.venv` e instala o `requirements.txt`;
 - verifica as importações;
 - detecta HidHide e vJoy e **oferece instalar** (pergunta S/N, com pedido de administrador).
 
-Opções: `PREPARAR_GTForceBridge.bat --xbox` (instala também o `requirements-xbox.txt`) e `--sem-drivers` (pula a verificação de HidHide/vJoy).
+Opções: `1-PREPARAR_GTForceBridge.bat --xbox` (instala também o `requirements-xbox.txt`) e `--sem-drivers` (pula a verificação de HidHide/vJoy).
 
 Manualmente:
 
@@ -156,7 +156,7 @@ Se mover a pasta, autorize de novo. A gravação da whitelist pode exigir admini
 Confirme o fork njz3 2.2.x, o device 1 configurado como acima e o Windows reiniciado após o driver.
 
 **Log com acentos quebrados ou atrasado no exe**
-Use o exe gerado pelo `compilar_gtforce_bridge.bat` atual, que aplica um hook de UTF-8 e stdout em linha.
+Use o exe gerado pelo `3-compilar_gtforce_bridge.bat` atual, que aplica um hook de UTF-8 e stdout em linha.
 
 **Antivírus acusa o exe**
 Executáveis gerados com PyInstaller costumam gerar falsos positivos. Compile você mesmo a partir do código se preferir.
@@ -164,7 +164,7 @@ Executáveis gerados com PyInstaller costumam gerar falsos positivos. Compile vo
 ## Compilar o executável
 
 ```bat
-compilar_gtforce_bridge.bat
+3-compilar_gtforce_bridge.bat
 ```
 
 Gera `dist\GTForceBridge\GTForceBridge.exe` (PyInstaller, `--onedir --windowed`). O script usa o `.venv` (chama o `PREPARAR` se faltar), empacota SDL2 (`sdl2dll`), copia `config.json`/`profiles` para a pasta do exe e aborta se o exe estiver rodando.
@@ -185,7 +185,7 @@ Os testes não precisam de Windows nem de volante.
 main.py                  ponto de entrada
 gtforce_bridge/          pacote: bridge, wheel, vjoy, ffb_translator, autocal, config, gui/ ...
 tests/                   testes unitários
-PREPARAR_GTForceBridge.bat / INICIAR_GTForceBridge.bat / compilar_gtforce_bridge.bat
+1-PREPARAR_GTForceBridge.bat / 2-INICIAR_GTForceBridge.bat / 3-compilar_gtforce_bridge.bat
 ARCHITECTURE.md · FFB_REFERENCIAS.md · PLANO.md · CHANGELOG_v*.md
 ```
 

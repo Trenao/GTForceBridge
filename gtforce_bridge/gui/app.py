@@ -6,10 +6,11 @@ Responsivo: >=1000 px largo; 700-999 compacto; <700 mínimo (menu lateral vira l
 from __future__ import annotations
 
 import json
+import os
 import queue
 
 from ..config import load_config
-from ..paths import CONFIG_PATH
+from ..paths import CONFIG_PATH, ICON_PATH
 from . import theme as T
 from .dashboard_tab import DashboardMixin
 from .monitor_tab import MonitorTabMixin
@@ -55,6 +56,10 @@ class BridgeGUI(DashboardMixin, MonitorTabMixin, CalibrationTabMixin, MappingTab
         self.pages, self.page_fit, self.nav_items, self.current_page = {}, {}, {}, None
         self._run_state = None
         self.root.title("GT Force Control Center")
+        try:
+            self.root.iconbitmap(default=ICON_PATH)        # GTFB.ico na janela e na barra de tarefas
+        except Exception:
+            pass
         T.apply_theme(root, ttk)
         sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
         w, h = min(1240, sw - 40), min(800, sh - 90)          # nunca maior que a tela
@@ -318,7 +323,9 @@ class BridgeGUI(DashboardMixin, MonitorTabMixin, CalibrationTabMixin, MappingTab
 
     def save_config(self,reload_widgets=False):
         try:
-            with open(CONFIG_PATH,"w",encoding="utf-8") as f:json.dump(self.cfg,f,indent=2,ensure_ascii=False)
+            tmp=CONFIG_PATH+".tmp"          # grava num temporário e troca: a ponte recarrega config.json a quente
+            with open(tmp,"w",encoding="utf-8") as f:json.dump(self.cfg,f,indent=2,ensure_ascii=False)
+            os.replace(tmp,CONFIG_PATH)
             self.write_log("Configuração salva em config.json.")
             if reload_widgets:
                 for sec,vals in self.cal_vars.items():

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import ctypes
+import math
 from ctypes import Structure, c_int, c_int32, c_ubyte, c_uint, c_ushort, c_void_p
 
 
@@ -69,6 +70,37 @@ def cartesian_x(raw, new_layout):
     bits = 16 if new_layout else 8
     raw &= (1 << bits) - 1
     return raw - (1 << bits) if raw >= (1 << (bits - 1)) else raw
+
+
+def s16(v):
+    """Estende o sinal de um valor de 16 bits que o vJoy entrega SEM sinal.
+
+    Capturas reais (Assetto Corsa Rally, Wreckfest 2): `Magnitude` (LONG, -10000..10000 no header) chega como 0..10000
+    para o lado positivo e 55536..65535 para o negativo (= valor int16 lido como unsigned), nunca como negativo.
+    Faixa legítima é ±10000, então 32768..65535 só pode ser um int16 negativo: v - 65536."""
+    v = int(v)
+    return v - 65536 if 32768 <= v <= 65535 else v
+
+
+def direction_ambiguous(polar, direction_byte, polar_zero="east"):
+    """True se a direção polar cai perto do eixo Y sob a convenção escolhida (lado indefinido => sinal fixo +1)."""
+    if not polar:
+        return False
+    ang = direction_byte / 255.0 * 2.0 * math.pi
+    return abs(math.sin(ang) if polar_zero == "north" else math.cos(ang)) < 0.1
+
+
+def direction_sign(polar, direction_byte, dirx, polar_zero="east"):
+    """Lado (+1 = direita, -1 = esquerda) que a DIREÇÃO do efeito indica. Única fonte da regra: tradutor e --ffb-dump.
+
+    Polar: só o hemisfério X decide; perto do eixo Y (|componente| < 0.1) a direção é indefinida e vale +1.
+    polar_zero "east" = ângulo medido a partir de +X (cos); "north" = convenção DirectInput (0° = norte, 90° = leste; sen).
+    Cartesiano (Polar=0): DirX negativo = esquerda (vjoyinterface.h)."""
+    if polar:
+        ang = direction_byte / 255.0 * 2.0 * math.pi
+        comp = math.sin(ang) if polar_zero == "north" else math.cos(ang)
+        return 1.0 if abs(comp) < 0.1 else (-1.0 if comp < 0.0 else 1.0)
+    return -1.0 if (dirx is not None and dirx < 0) else 1.0
 
 
 DURATION_INFINITE = 0xFFFF   # vjoyinterface.h: "Value in milliseconds. 0xFFFF means infinite"

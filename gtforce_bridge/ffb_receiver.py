@@ -5,7 +5,7 @@ import ctypes
 import queue
 from ctypes import POINTER, byref, c_int, c_int32, c_ubyte, c_void_p
 
-from .vjoy_protocol import cartesian_x, FFB_EFF_COND, FFB_EFF_CONSTANT, FFB_EFF_OP, FFB_EFF_PERIOD, FFB_EFF_RAMP, direction_to_byte, report_class, uses_new_layout, PT_BLKFRREP, PT_CONDREP, PT_CONSTREP, PT_CTRLREP, PT_EFFREP, PT_EFOPREP, PT_GAINREP, PT_PRIDREP, PT_RAMPREP
+from .vjoy_protocol import s16, cartesian_x, FFB_EFF_COND, FFB_EFF_CONSTANT, FFB_EFF_OP, FFB_EFF_PERIOD, FFB_EFF_RAMP, direction_to_byte, report_class, uses_new_layout, PT_BLKFRREP, PT_CONDREP, PT_CONSTREP, PT_CTRLREP, PT_EFFREP, PT_EFOPREP, PT_GAINREP, PT_PRIDREP, PT_RAMPREP
 
 
 class FfbReceiver:
@@ -38,26 +38,26 @@ class FfbReceiver:
         elif t == PT_CONSTREP:
             c = FFB_EFF_CONSTANT()
             if d.Ffb_h_Eff_Constant(c_void_p(pkt), byref(c)) == 0:
-                self.q.put(("constant", c.EffectBlockIndex, c.Magnitude))
+                self.q.put(("constant", c.EffectBlockIndex, s16(c.Magnitude)))
         elif t == PT_RAMPREP:
             if hasattr(d, "Ffb_h_Eff_Ramp"):
                 r = FFB_EFF_RAMP()
                 if d.Ffb_h_Eff_Ramp(c_void_p(pkt), byref(r)) == 0:
-                    self.q.put(("ramp", r.EffectBlockIndex, r.Start, r.End))
+                    self.q.put(("ramp", r.EffectBlockIndex, s16(r.Start), s16(r.End)))
             else:
                 buf = ctypes.string_at(pkt, 9)
                 ebi = buf[0]
                 arr = ctypes.cast(ctypes.create_string_buffer(buf[1:9]), POINTER(c_int32))
-                self.q.put(("ramp", ebi, arr[0], arr[1]))
+                self.q.put(("ramp", ebi, s16(arr[0]), s16(arr[1])))
         elif t == PT_CONDREP:
             c = FFB_EFF_COND()
             if d.Ffb_h_Eff_Cond(c_void_p(pkt), byref(c)) == 0:
-                self.q.put(("cond", c.EffectBlockIndex, c.isY, c.CenterPointOffset,
-                            c.PosCoeff, c.NegCoeff, c.PosSatur, c.NegSatur, c.DeadBand))
+                self.q.put(("cond", c.EffectBlockIndex, c.isY, s16(c.CenterPointOffset),
+                            s16(c.PosCoeff), s16(c.NegCoeff), c.PosSatur, c.NegSatur, c.DeadBand))
         elif t == PT_PRIDREP:
             p = FFB_EFF_PERIOD()
             if d.Ffb_h_Eff_Period(c_void_p(pkt), byref(p)) == 0:
-                self.q.put(("period", p.EffectBlockIndex, p.Magnitude, p.Offset, p.Phase, p.Period))
+                self.q.put(("period", p.EffectBlockIndex, p.Magnitude, s16(p.Offset), p.Phase, p.Period))
         elif t == PT_EFOPREP:
             o = FFB_EFF_OP()
             if d.Ffb_h_EffOp(c_void_p(pkt), byref(o)) == 0:

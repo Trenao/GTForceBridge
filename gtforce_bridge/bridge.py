@@ -7,7 +7,7 @@ import time
 
 from . import winutil
 from .autocal_profile import overlay_profile, pid_key, profile_for
-from .config import DEFAULT_CONFIG, _sanitize_ffb, deep_merge
+from .config import DEFAULT_CONFIG, _sanitize_ffb, deep_merge, merge_user_config
 from .controls import compute_controls
 from .curves import clamp
 from .device_table import describe
@@ -146,7 +146,7 @@ def cmd_run(cfg, verbose, ffb=True, dump=False):
                     cfg_mtime = m
                     try:
                         with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-                            new_cfg = deep_merge(DEFAULT_CONFIG, json.load(f))
+                            new_cfg = merge_user_config(json.load(f))
                         new_cfg = _sanitize_ffb(new_cfg)
                         for key, val in new_cfg.items():
                             if isinstance(val, dict) and isinstance(cfg.get(key), dict):
@@ -220,6 +220,8 @@ def cmd_run(cfg, verbose, ffb=True, dump=False):
     finally:
         if dump_stats is not None:
             print("[ffb-dump] total:", dump_stats.summary())
+            for line in dump_stats.side_summary():
+                print(line)
         try:
             if translator:
                 translator.shutdown()

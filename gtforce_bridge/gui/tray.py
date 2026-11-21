@@ -10,7 +10,7 @@ import queue
 import sys
 
 from . import theme as T
-from ..paths import BASE_DIR, MAIN_SCRIPT
+from ..paths import BASE_DIR, ICON_PATH, MAIN_SCRIPT
 
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 RUN_NAME = "GTForceControlCenter"
@@ -77,7 +77,33 @@ def acquire_single_instance():
 
 
 # ------------------------------------------------------------------ ícone
+_BASE_ICON = {}
+
+
+def _file_icon(size):
+    """GTFB.ico redimensionado (cache); None se o arquivo não existir/abrir."""
+    if size not in _BASE_ICON:
+        try:
+            im = Image.open(ICON_PATH)
+            try:
+                im.size = max(im.ico.sizes())      # maior quadro do .ico
+            except Exception:
+                pass
+            _BASE_ICON[size] = im.convert("RGBA").resize((size, size), Image.LANCZOS)
+        except Exception:
+            _BASE_ICON[size] = None
+    return _BASE_ICON[size]
+
+
 def make_icon(state="idle", size=64):
+    base = _file_icon(size)
+    if base is not None:
+        img = base.copy()
+        d = ImageDraw.Draw(img)
+        s = size / 64
+        dot = {"running": T.OK, "busy": T.ACCENT_HI}.get(state, "#6b7a90")
+        d.ellipse((42 * s, 42 * s, 62 * s, 62 * s), fill=dot, outline=T.SIDEBAR, width=max(1, int(2 * s)))   # estado
+        return img
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     s = size / 64

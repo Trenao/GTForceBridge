@@ -8,6 +8,7 @@ from .paths import CONFIG_PATH
 
 
 DEFAULT_CONFIG = {
+    "cfg_version": 2,   # 2 (v0.9.4): polar_zero passou a "north"; configs antigas com "east" são migradas uma vez
     "device_match": "Formula Force",
     "device_pids": [0xC291, 0xC293, 0xC294, 0xC298, 0xCA03, 0xCA04, 0xC299, 0xC29B],
     "vjoy_device_id": 1,
@@ -75,10 +76,11 @@ DEFAULT_CONFIG = {
         "disable_autocenter": True,
         # Duração/atraso/loops do jogo (PID 1.0 / vjoyinterface.h): efeito com duração finita para sozinho.
         "honor_duration": True,
-        # Zero da direção polar: "east" = ângulo a partir de +X (comportamento até a v0.6);
-        # "north" = convenção do DirectInput (0° = norte, 90° = leste = +X; componente X = sen).
-        # O PID 1.0 não define o zero; use --ffb-dump com o jogo para ver qual convenção ele usa.
-        "polar_zero": "east",
+        # Zero da direção polar: "north" = convenção do DirectInput (0° = norte, 90° = leste = +X, 270° = -X;
+        # componente X = sen) — PADRÃO desde a v0.9.4: o Windows manda 89° (DirectInput 9000) e o FH4 usa 90°/270°
+        # para o lado da força. "east" = ângulo a partir de +X (até a v0.9.3): 90° e 270° viram "ambíguos" e
+        # fixam o sinal em +1 => o volante pesa sempre para o mesmo lado.
+        "polar_zero": "north",
         "autocal_by_pid": {}
     },
     # log em arquivo (cópia de tudo que a ponte imprime), com rotação
@@ -156,7 +158,7 @@ def _sanitize_ffb(cfg):
     _num("slew_per_sec", 0.0, 100.0, 0.0)
     _num("const_deadzone_pct", 0.0, 50.0, 0.0)
     _num("magnitude_scale", 0.0, 65535.0, 0.0)
-    for key, allowed, default in (("polar_zero", ("east", "north"), "east"),
+    for key, allowed, default in (("polar_zero", ("east", "north"), "north"),
                                   ("direction_mode", ("steering", "cartesian"), "steering")):
         if ffb.get(key) not in allowed:
             rejected.append(f"{key}={ffb.get(key)!r} (válidos: {', '.join(allowed)})")
@@ -175,6 +177,25 @@ def _sanitize_ffb(cfg):
     return cfg
 
 
+def _migrate(cfg, user_cfg):
+    """Migrações de uma vez só (config.json sem 'cfg_version' ou com versão menor). True se algo mudou."""
+    if int(user_cfg.get("cfg_version", 1) or 1) >= DEFAULT_CONFIG["cfg_version"]:
+        return False
+    ffb = cfg.setdefault("ffb", {})
+    if ffb.get("polar_zero") == "east":
+        # o "east" antigo era só o valor padrão (nunca provado) e fixa o sinal em +1 para 90°/270°
+        ffb["polar_zero"] = "north"
+        print("[config] ffb.polar_zero: 'east' -> 'north' (convenção DirectInput; corrige o volante pesar sempre para um lado)")
+    return True
+
+
+def merge_user_config(user_cfg):
+    """DEFAULT_CONFIG + config/perfil do usuário, já migrado (usado por config.json, recarga a quente e perfis)."""
+    cfg = deep_merge(DEFAULT_CONFIG, user_cfg)
+    _migrate(cfg, user_cfg)
+    return cfg
+
+
 def load_config():
     if not os.path.exists(CONFIG_PATH):
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
@@ -188,9 +209,10 @@ def load_config():
         print("[config] chaves não reconhecidas (ignoradas; podem ser de uma versão antiga): "
               + ", ".join(stale))
     cfg = deep_merge(DEFAULT_CONFIG, user_cfg)
+    migrated = _migrate(cfg, user_cfg)
     before = json.dumps(cfg, sort_keys=True)
     cfg = _sanitize_ffb(cfg)
-    if json.dumps(cfg, sort_keys=True) != before:
+    if migrated or json.dumps(cfg, sort_keys=True) != before:
         # Persiste o saneamento para a mensagem não reaparecer a cada execução.
         try:
             with open(CONFIG_PATH, "w", encoding="utf-8") as f:
