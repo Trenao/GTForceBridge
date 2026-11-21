@@ -1,0 +1,2 @@
+# Opcional: saída de controle Xbox 360 virtual (outputs.xbox). Exige também o driver ViGEmBus.
+vgamepad>=0.2.0
